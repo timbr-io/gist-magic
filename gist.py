@@ -86,6 +86,5 @@ class GistMagics(Magics):
         gist = self.gh.gists.update(line, config)
 
 
-def load_ipython_extension():
-    ip = get_ipython()
+def load_ipython_extension(ip):
     ip.register_magics(GistMagics)
