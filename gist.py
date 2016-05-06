@@ -1,8 +1,46 @@
 from IPython.core.magic import (Magics, magics_class, line_magic,
                                 cell_magic, line_cell_magic)
 from pygithub3 import Github
+from pygithub3.resources.gists import Gist
 import os
 import shlex
+import re
+from urllib2 import urlopen
+
+
+from IPython.display import publish_display_data
+
+def build_display_data(obj):
+    output = {"text/plain": repr(obj)}
+    methods = dir(obj)
+    if "_repr_html_" in methods:
+        output["text/html"] = obj._repr_html_()
+    if "_repr_javascript_" in methods:
+        output["application/javascript"] = obj._repr_javascript_()
+    return output
+
+class PrettyGist(object):
+    def __init__(self, g):
+        self.gist = g
+
+    def __repr__(self):
+        if "snippet.py" in self.gist.files:
+            return self.gist.files["snippet.py"].content
+        else:
+            fname = self.gist.files.keys()[0]
+            print "%s: \n" % fname
+            return self.gist.files[fname].content
+
+    def _repr_html_(self):
+        url = "https://gist.github.com/%s/%s.js" % (self.gist.owner["login"], self.gist.id)
+        resp = urlopen(url)
+        jsdata = resp.read()
+        matches = re.findall(r"document\.write\(\'([^)]+)\'\)", jsdata, re.DOTALL)
+        output = [re.sub(r"<\\/(\w+)>", r"</\1>", m.decode("string_escape")) for m in matches]
+        return "\n".join(output)
+
+    def _repr_javascript_(self):
+        return 'console.log("<PrettyGist/>")'
 
 # The class MUST call this class decorator at creation time
 @magics_class
@@ -54,13 +92,9 @@ class GistMagics(Magics):
 
     @line_magic('gist_show')
     def show(self, line):
-        gist = self.gh.gists.get(line)
-        if "snippet.py" in gist.files:
-            print(gist.files["snippet.py"].content)
-        else:
-            fname = gist.files.keys()[0]
-            print "%s: \n" % fname
-            print(gist.files[fname].content)
+        gist = PrettyGist(self.gh.gists.get(line))
+        publish_display_data(build_display_data(gist))
+        # return gist
 
     @cell_magic('gist_create')
     def create(self, cell):
@@ -84,7 +118,6 @@ class GistMagics(Magics):
         config = dict(description='test gist', public=False,
                           files={'snippet.py': {'content': cell}})
         gist = self.gh.gists.update(line, config)
-
 
 def load_ipython_extension(ip):
     ip.register_magics(GistMagics)
