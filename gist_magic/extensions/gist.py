@@ -39,8 +39,8 @@ class PrettyGist(object):
         output = [re.sub(r"<\\/(\w+)>", r"</\1>", m.decode("string_escape")) for m in matches]
         return "\n".join(output)
 
-    def _repr_javascript_(self):
-        return 'console.log("<PrettyGist/>")'
+    # def _repr_javascript_(self):
+    #     return 'console.log("<PrettyGist/>")'
 
 # The class MUST call this class decorator at creation time
 @magics_class
