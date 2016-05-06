@@ -118,6 +118,3 @@ class GistMagics(Magics):
         config = dict(description='test gist', public=False,
                           files={'snippet.py': {'content': cell}})
         gist = self.gh.gists.update(line, config)
-
-def load_ipython_extension(ip):
-    ip.register_magics(GistMagics)
