@@ -59,6 +59,7 @@ class GistMagics(Magics):
         if os.environ.get("GITHUB_ACCESS_TOKEN") is not None:
             self._token = os.environ.get("GITHUB_ACCESS_TOKEN")
             self.gh = Github(token=self._token)
+            self.preset_id = None
 
     @line_cell_magic
     def gist(self, line, cell=None):
