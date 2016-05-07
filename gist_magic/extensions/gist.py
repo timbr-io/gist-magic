@@ -8,7 +8,7 @@ import os
 import shlex
 import re
 from urllib2 import urlopen
-
+from itertools import chain
 
 from IPython.display import publish_display_data
 
@@ -37,8 +37,15 @@ class PrettyGist(object):
         url = "https://gist.github.com/%s/%s.js" % (self.gist.owner["login"], self.gist.id)
         resp = urlopen(url)
         jsdata = resp.read()
-        matches = re.findall(r"document\.write\(\'([^)]+)\'\)", jsdata, re.DOTALL)
-        output = [re.sub(r"<\\/(\w+)>", r"</\1>", m.decode("string_escape")) for m in matches]
+        matches = [re.findall(r"document\.write\([\'\"](.+)[\'\"]\)", line, re.DOTALL) for line in jsdata.splitlines()]
+        output = [re.sub(r"<\\/(\w+)>", r"</\1>", m.decode("string_escape")) for m in chain(*matches)]
+        output.append("""
+<style>
+.rendered_html th, .rendered_html td, .rendered_html tr {
+  border: 0px;
+}
+</style>
+""")
         return "\n".join(output)
 
     # def _repr_javascript_(self):
@@ -117,12 +124,14 @@ class GistMagics(Magics):
 
     @line_magic('gist_show')
     def show(self, line, display=True, evaluate=True):
-        gist = PrettyGist(self.gh.gists.get(line))
+        gist = self.gh.gists.get(line)
+        pretty_gist = PrettyGist(gist)
         if display:
-            publish_display_data(build_display_data(gist))
+            publish_display_data(build_display_data(pretty_gist))
         if evaluate:
-            get_ipython.run_cell(repr(gist)) # repr PrettyGist -> gist code
-        return gist
+            get_ipython().run_cell(repr(pretty_gist)) # repr PrettyGist -> gist code
+        if not display:
+            return pretty_gist
 
     @cell_magic('gist_create')
     def create(self, cell, filename="snippet.py"):
