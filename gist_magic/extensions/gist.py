@@ -28,6 +28,8 @@ class PrettyGist(object):
     def __repr__(self):
         if "snippet.py" in self.gist.files:
             return self.gist.files["snippet.py"].content
+        elif "preset.txt" in self.gist.files:
+            return self.gist.files["preset.txt"].content
         else:
             fname = self.gist.files.keys()[0]
             print "%s: \n" % fname
@@ -100,7 +102,7 @@ class GistMagics(Magics):
         if cell is None:
             if len(args) == 0:
                 # create an empty gist and output the id
-                self.create("%%gist preset", filename="preset.txt") # -> prints the id
+                self.create("%%gist preset\n# gist ids\n", filename="preset.txt") # -> prints the id
             else:
                 self.preset_id = args[0]
                 pretty_gist = self.show(args[0])
