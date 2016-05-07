@@ -1,5 +1,7 @@
 from IPython.core.magic import (Magics, magics_class, line_magic,
                                 cell_magic, line_cell_magic)
+from IPython import get_ipython
+
 from pygithub3 import Github
 from pygithub3.resources.gists import Gist
 import os
@@ -69,6 +71,11 @@ class GistMagics(Magics):
                 self.list()
             elif args[0] == "delete":
                 self.delete(args[1])
+            elif args[0] == "preset":
+                try:
+                    self.preset(args[1])
+                except IndexError, ie:
+                    self.preset()
             else:
                 # assume we have been passed a gist id
                 self.show(args[0])
@@ -78,6 +85,24 @@ class GistMagics(Magics):
                 self.update(args[0], cell)
             else:
                 self.create(cell)
+
+    @line_cell_magic('gist_preset')
+    def preset(self, line=None, cell=None):
+        args = shlex.split(line)
+        if cell is None:
+            if len(args) == 0:
+                # create an empty gist and output the id
+                self.create("%%gist preset", filename="preset.txt") # -> prints the id
+            else:
+                self.preset_id = args[0]
+                pretty_gist = self.show(args[0])
+        else:
+            # execute as a cell magic
+            for line in cell.splitlines():
+                try:
+                    self.show(line, display=False, evaluate=True)
+                except:
+                    print "Unable to load snippet with id: %s" % line
 
     @line_magic('gist_token')
     def token(self, line):
@@ -91,17 +116,21 @@ class GistMagics(Magics):
             print "%s %s" % (gist.id, gist.html_url)
 
     @line_magic('gist_show')
-    def show(self, line):
+    def show(self, line, display=True, evaluate=True):
         gist = PrettyGist(self.gh.gists.get(line))
-        publish_display_data(build_display_data(gist))
-        # return gist
+        if display:
+            publish_display_data(build_display_data(gist))
+        if evaluate:
+            get_ipython.run_cell(repr(gist)) # repr PrettyGist -> gist code
+        return gist
 
     @cell_magic('gist_create')
-    def create(self, cell):
+    def create(self, cell, filename="snippet.py"):
         assert cell is not None
-        config = dict(description='test gist', public=False,
-                      files={'snippet.py': {'content': cell}})
+        config = dict(description='', public=False,
+                      files={filename: {'content': cell}})
         gist = self.gh.gists.create(config)
+        # TODO: check if we are on a preset and, if so, append this id to the it
         print("gist id: %s" % gist.id)
 
     @line_magic('gist_delete')
@@ -109,6 +138,7 @@ class GistMagics(Magics):
         try:
             self.gh.gists.delete(line)
             print("Deleted gist %s" % line)
+            # TODO: also delete the gist id line from the preset if we're on one
         except Exception, e:
             print("Could not delete gist %s" % line)
 
