@@ -110,7 +110,8 @@ class GistMagics(Magics):
             # execute as a cell magic
             for line in cell.splitlines():
                 try:
-                    self.show(line, display=False, evaluate=True)
+                    if not line.strip().startswith("#"):
+                        self.show(line, display=False, evaluate=True)
                 except:
                     print "Unable to load snippet with id: %s" % line
 
