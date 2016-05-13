@@ -2,56 +2,18 @@ from IPython.core.magic import (Magics, magics_class, line_magic,
                                 cell_magic, line_cell_magic)
 from IPython import get_ipython
 
+import argparse
+
 from pygithub3 import Github
 from pygithub3.resources.gists import Gist
 import os
 import shlex
-import re
-from urllib2 import urlopen
 from itertools import chain
 
 from IPython.display import publish_display_data
+from .pretty import PrettyGist, build_display_data
 
-def build_display_data(obj):
-    output = {"text/plain": repr(obj)}
-    methods = dir(obj)
-    if "_repr_html_" in methods:
-        output["text/html"] = obj._repr_html_()
-    if "_repr_javascript_" in methods:
-        output["application/javascript"] = obj._repr_javascript_()
-    return output
 
-class PrettyGist(object):
-    def __init__(self, g):
-        self.gist = g
-
-    def __repr__(self):
-        if "snippet.py" in self.gist.files:
-            return self.gist.files["snippet.py"].content
-        elif "preset.txt" in self.gist.files:
-            return self.gist.files["preset.txt"].content
-        else:
-            fname = self.gist.files.keys()[0]
-            print "%s: \n" % fname
-            return self.gist.files[fname].content
-
-    def _repr_html_(self):
-        url = "https://gist.github.com/%s/%s.js" % (self.gist.owner["login"], self.gist.id)
-        resp = urlopen(url)
-        jsdata = resp.read()
-        matches = [re.findall(r"document\.write\([\'\"](.+)[\'\"]\)", line, re.DOTALL) for line in jsdata.splitlines()]
-        output = [re.sub(r"<\\/(\w+)>", r"</\1>", m.decode("string_escape")) for m in chain(*matches)]
-        output.append("""
-<style>
-.rendered_html th, .rendered_html td, .rendered_html tr {
-  border: 0px;
-}
-</style>
-""")
-        return "\n".join(output)
-
-    # def _repr_javascript_(self):
-    #     return 'console.log("<PrettyGist/>")'
 
 # The class MUST call this class decorator at creation time
 @magics_class
@@ -63,49 +25,56 @@ class GistMagics(Magics):
             self.gh = Github(token=self._token)
             self.preset_id = None
 
+        self._parser = self.generate_parser()
+
+
+
+    def generate_parser(self):
+        parser = argparse.ArgumentParser(prog="gist")
+
+        subparsers = parser.add_subparsers()
+        token_parser = subparsers.add_parser("token", help="Register a Github token for authentication")
+        token_parser.add_argument("github_token", help="Github access token")
+        token_parser.set_defaults(fn=self.token)
+        list_parser = subparsers.add_parser("list", help="List current user's gists (or recent public gists if token is not set)")
+        list_parser.set_defaults(fn=self.list)
+        delete_parser = subparsers.add_parser("delete", help="Delete gist specified by id")
+        delete_parser.add_argument("delete_gist_id", help="ID of gist to delete")
+        delete_parser.set_defaults(fn=self.delete)
+        preset_parser = subparsers.add_parser("preset", help="Create or register a preset gist as active")
+        preset_parser.add_argument("preset_gist_id", help="ID of gist preset to select", default=None)
+        preset_parser.set_defaults(fn=self.preset)
+
+        show_parser = subparsers.add_parser("show", help="Show (or update) a gist")
+        show_parser.add_argument("gist_id", help="ID of gist to load/update", nargs="?")
+        show_parser.add_argument("--no-display", action="store_false", dest="display")
+        show_parser.add_argument("--no-eval", action="store_false", dest="evaluate")
+        show_parser.add_argument("-f", "--file", help="Name of the gist file to create / update")
+        show_parser.set_defaults(fn=self.show_or_update)
+
+        return parser
+
     @line_cell_magic
     def gist(self, line, cell=None):
-        # TODO: lots of cleanup and error handling
-        args = shlex.split(line)
-        if cell is None:
-            # run as a line magic
-            assert len(args) > 0 # there better be a subcommand or gist id
-            if args[0] == "list":
-                if len(args) > 1:
-                    self.list(args[1])
-                else:
-                    self.list("")
-            elif args[0] == "token":
-                self.token(args[1])
-            elif args[0] == "list":
-                self.list()
-            elif args[0] == "delete":
-                self.delete(args[1])
-            elif args[0] == "preset":
-                try:
-                    self.preset(args[1])
-                except IndexError, ie:
-                    self.preset()
-            else:
-                # assume we have been passed a gist id
-                self.show(args[0])
-        else:
-            # run as a cell magic
-            if len(args) > 0:
-                self.update(args[0], cell)
-            else:
-                self.create(cell)
+        try:
+            input_args = shlex.split(line)
+            if len(input_args) > 0 and input_args[0] not in ["token", "list", "delete", "preset"]:
+                input_args.insert(0, "show")
+            elif len(input_args) == 0:
+                input_args.insert(0, "list")
+            args, extra = self._parser.parse_known_args(input_args)
+            args.fn(cell=cell, **vars(args))
+        except SystemExit, se:
+            pass
 
-    @line_cell_magic('gist_preset')
-    def preset(self, line=None, cell=None):
-        args = shlex.split(line)
+    def preset(self, preset_gist_id=None, cell=None, **kwargs):
         if cell is None:
-            if len(args) == 0:
+            if preset_gist_id is None:
                 # create an empty gist and output the id
                 self.create("%%gist preset\n# gist ids\n", filename="preset.txt") # -> prints the id
             else:
-                self.preset_id = args[0]
-                pretty_gist = self.show(args[0])
+                self.preset_id = preset_gist_id
+                pretty_gist = self.show(preset_gist_id)
         else:
             # execute as a cell magic
             for line in cell.splitlines():
@@ -115,20 +84,27 @@ class GistMagics(Magics):
                 except:
                     print "Unable to load snippet with id: %s" % line
 
-    @line_magic('gist_token')
-    def token(self, line):
-        self._token = line
+    def token(self, github_token, **kwargs):
+        self._token = github_token
         self.gh = Github(token=self._token)
 
-    @line_magic('gist_list')
-    def list(self, line=None):
+    def list(self, **kwargs):
         gists = self.gh.gists.list()
         for gist in gists.iterator():
             print "%s %s" % (gist.id, gist.html_url)
 
-    @line_magic('gist_show')
-    def show(self, line, display=True, evaluate=True):
-        gist = self.gh.gists.get(line)
+    def show_or_update(self, gist_id=None, cell=None, display=True,
+                       evaluate=True, filename="snippet.py", **kwargs):
+        if cell is not None:
+            if gist_id is None:
+                return self.create(cell, filename=filename)
+            else:
+                return self.update(gist_id, cell, filename=filename)
+        else:
+            return self.show(gist_id, display, evaluate)
+
+    def show(self, gist_id, display=True, evaluate=True, **kwargs):
+        gist = self.gh.gists.get(gist_id)
         pretty_gist = PrettyGist(gist)
         if display:
             publish_display_data(build_display_data(pretty_gist))
@@ -137,7 +113,6 @@ class GistMagics(Magics):
         if not display:
             return pretty_gist
 
-    @cell_magic('gist_create')
     def create(self, cell, filename="snippet.py"):
         assert cell is not None
         config = dict(description='', public=False,
@@ -146,18 +121,16 @@ class GistMagics(Magics):
         # TODO: check if we are on a preset and, if so, append this id to the it
         print("gist id: %s" % gist.id)
 
-    @line_magic('gist_delete')
-    def delete(self, line):
+    def delete(self, gist_id):
         try:
-            self.gh.gists.delete(line)
-            print("Deleted gist %s" % line)
+            self.gh.gists.delete(gist_id)
+            print("Deleted gist %s" % gist_id)
             # TODO: also delete the gist id line from the preset if we're on one
         except Exception, e:
             print("Could not delete gist %s" % line)
 
-    @line_cell_magic('gist_update')
-    def update(self, line, cell=None):
+    def update(self, gist_id, cell, filename="snippet.py"):
         assert cell is not None
-        config = dict(description='test gist', public=False,
-                          files={'snippet.py': {'content': cell}})
-        gist = self.gh.gists.update(line, config)
+        config = dict(description='', public=False,
+                          files={filename: {'content': cell}})
+        gist = self.gh.gists.update(gist_id, config)
