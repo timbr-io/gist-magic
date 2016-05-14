@@ -61,7 +61,7 @@ class GistMagics(Magics):
             if len(input_args) == 0 or input_args[0] not in ["token", "list", "delete", "preset"]:
                 input_args.insert(0, "show")
             args, extra = self._parser.parse_known_args(input_args)
-            print args
+            # print args
             args.fn(cell=cell, **vars(args))
         except SystemExit, se:
             pass
