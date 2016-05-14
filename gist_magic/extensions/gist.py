@@ -11,7 +11,7 @@ import shlex
 from itertools import chain
 
 from IPython.display import publish_display_data
-from .pretty import PrettyGist, build_display_data
+from .pretty import PrettyGist, PrettyGistList, build_display_data
 
 
 
@@ -90,8 +90,9 @@ class GistMagics(Magics):
 
     def list(self, **kwargs):
         gists = self.gh.gists.list()
-        for gist in gists.iterator():
-            print "%s %s" % (gist.id, gist.html_url)
+        gists_list = PrettyGistList(list(gists.iterator()))
+        publish_display_data(build_display_data(gists_list))
+        return gists_list
 
     def show_or_update(self, gist_id=None, cell=None, display=True,
                        evaluate=True, filename="snippet.py", **kwargs):
@@ -109,7 +110,7 @@ class GistMagics(Magics):
         if display:
             publish_display_data(build_display_data(pretty_gist))
         if evaluate:
-            get_ipython().run_cell(repr(pretty_gist)) # repr PrettyGist -> gist code
+            get_ipython().run_cell(pretty_gist.content)
         if not display:
             return pretty_gist
 
