@@ -58,11 +58,10 @@ class GistMagics(Magics):
     def gist(self, line, cell=None):
         try:
             input_args = shlex.split(line)
-            if len(input_args) > 0 and input_args[0] not in ["token", "list", "delete", "preset"]:
+            if len(input_args) == 0 or input_args[0] not in ["token", "list", "delete", "preset"]:
                 input_args.insert(0, "show")
-            elif len(input_args) == 0:
-                input_args.insert(0, "list")
             args, extra = self._parser.parse_known_args(input_args)
+            print args
             args.fn(cell=cell, **vars(args))
         except SystemExit, se:
             pass
@@ -102,7 +101,10 @@ class GistMagics(Magics):
             else:
                 return self.update(gist_id, cell, filename=filename)
         else:
-            return self.show(gist_id, display, evaluate)
+            if gist_id is not None:
+                return self.show(gist_id, display, evaluate)
+            else:
+                return self.list()
 
     def show(self, gist_id, display=True, evaluate=True, **kwargs):
         gist = self.gh.gists.get(gist_id)
@@ -119,7 +121,7 @@ class GistMagics(Magics):
         config = dict(description='', public=False,
                       files={filename: {'content': cell}})
         gist = self.gh.gists.create(config)
-        # TODO: check if we are on a preset and, if so, append this id to the it
+        self.add_to_preset(gist.id)
         print("gist id: %s" % gist.id)
 
     def delete(self, gist_id):
@@ -135,3 +137,10 @@ class GistMagics(Magics):
         config = dict(description='', public=False,
                           files={filename: {'content': cell}})
         gist = self.gh.gists.update(gist_id, config)
+
+    def add_to_preset(self, gist_id):
+        if self.preset_id is not None:
+            preset_gist = self.gh.gists.get(self.preset_id)
+            preset_content = preset_gist.files["preset.txt"].content + "\n{}".format(gist_id)
+            print preset_content
+            self.update(preset_gist.id, preset_content, filename="preset.txt")
