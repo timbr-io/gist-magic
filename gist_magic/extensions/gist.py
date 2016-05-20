@@ -13,6 +13,11 @@ from itertools import chain
 from IPython.display import publish_display_data
 from .pretty import PrettyGist, PrettyGistList, build_display_data
 
+from IPython.core.formatters import DisplayFormatter
+
+def publish_to_display(obj):
+    output, _ = DisplayFormatter().format(obj)
+    publish_display_data(output)
 
 
 # The class MUST call this class decorator at creation time
@@ -42,7 +47,7 @@ class GistMagics(Magics):
         delete_parser.add_argument("delete_gist_id", help="ID of gist to delete")
         delete_parser.set_defaults(fn=self.delete)
         preset_parser = subparsers.add_parser("preset", help="Create or register a preset gist as active")
-        preset_parser.add_argument("preset_gist_id", help="ID of gist preset to select", default=None)
+        preset_parser.add_argument("preset_gist_id", help="ID of gist preset to select", default=None, nargs="?")
         preset_parser.set_defaults(fn=self.preset)
 
         show_parser = subparsers.add_parser("show", help="Show (or update) a gist")
@@ -62,7 +67,7 @@ class GistMagics(Magics):
                 input_args.insert(0, "show")
             args, extra = self._parser.parse_known_args(input_args)
             # print args
-            args.fn(cell=cell, **vars(args))
+            return args.fn(cell=cell, **vars(args))
         except SystemExit, se:
             pass
 
@@ -78,10 +83,12 @@ class GistMagics(Magics):
             # execute as a cell magic
             for line in cell.splitlines():
                 try:
-                    if not line.strip().startswith("#"):
-                        self.show(line, display=False, evaluate=True)
-                except:
-                    print "Unable to load snippet with id: %s" % line
+                    gist_id, rest = line.split("#", 2)
+                    if len(gist_id) > 0:
+                        self.show(gist_id, display=False, evaluate=True)
+                except Exception as e:
+                    print "Unable to load snippet with id: %s" % gist_id
+                    print str(e)
 
     def token(self, github_token, **kwargs):
         self._token = github_token
