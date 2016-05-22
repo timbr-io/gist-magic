@@ -44,7 +44,7 @@ class GistMagics(Magics):
         list_parser = subparsers.add_parser("list", help="List current user's gists (or recent public gists if token is not set)")
         list_parser.set_defaults(fn=self.list)
         delete_parser = subparsers.add_parser("delete", help="Delete gist specified by id")
-        delete_parser.add_argument("delete_gist_id", help="ID of gist to delete")
+        delete_parser.add_argument("gist_id", help="ID of gist to delete")
         delete_parser.set_defaults(fn=self.delete)
         preset_parser = subparsers.add_parser("preset", help="Create or register a preset gist as active")
         preset_parser.add_argument("preset_gist_id", help="ID of gist preset to select", default=None, nargs="?")
@@ -53,7 +53,7 @@ class GistMagics(Magics):
         show_parser = subparsers.add_parser("show", help="Show (or update) a gist")
         show_parser.add_argument("gist_id", help="ID of gist to load/update", nargs="?")
         show_parser.add_argument("--no-display", action="store_false", dest="display")
-        show_parser.add_argument("e", "--evaluate", action="store_true")
+        show_parser.add_argument("-e", "--evaluate", action="store_true")
         show_parser.add_argument("-f", "--file", help="Name of the gist file to create / update")
         show_parser.set_defaults(fn=self.show_or_update)
 
@@ -66,7 +66,7 @@ class GistMagics(Magics):
             if len(input_args) == 0 or input_args[0] not in ["token", "list", "delete", "preset"]:
                 input_args.insert(0, "show")
             args, extra = self._parser.parse_known_args(input_args)
-            # print args
+            # print(args)
             return args.fn(cell=cell, **vars(args))
         except SystemExit, se:
             pass
@@ -128,7 +128,7 @@ class GistMagics(Magics):
         self.add_to_preset(gist.id)
         print("gist id: %s" % gist.id)
 
-    def delete(self, gist_id):
+    def delete(self, gist_id, **kwargs):
         try:
             self.gh.gists.delete(gist_id)
             print("Deleted gist %s" % gist_id)
