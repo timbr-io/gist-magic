@@ -83,7 +83,7 @@ class GistMagics(Magics):
             # execute as a cell magic
             for line in cell.splitlines():
                 try:
-                    gist_id, rest = line.split("#", 2)
+                    gist_id = line.split("#", 2)[0]
                     if len(gist_id) > 0:
                         self.show(gist_id, display=False, evaluate=True)
                 except Exception as e:
