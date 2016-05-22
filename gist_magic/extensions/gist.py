@@ -53,7 +53,7 @@ class GistMagics(Magics):
         show_parser = subparsers.add_parser("show", help="Show (or update) a gist")
         show_parser.add_argument("gist_id", help="ID of gist to load/update", nargs="?")
         show_parser.add_argument("--no-display", action="store_false", dest="display")
-        show_parser.add_argument("--no-eval", action="store_false", dest="evaluate")
+        show_parser.add_argument("e", "--evaluate", action="store_true")
         show_parser.add_argument("-f", "--file", help="Name of the gist file to create / update")
         show_parser.set_defaults(fn=self.show_or_update)
 
@@ -79,6 +79,7 @@ class GistMagics(Magics):
             else:
                 self.preset_id = preset_gist_id
                 pretty_gist = self.show(preset_gist_id)
+                return pretty_gist
         else:
             # execute as a cell magic
             for line in cell.splitlines():
@@ -97,7 +98,6 @@ class GistMagics(Magics):
     def list(self, **kwargs):
         gists = self.gh.gists.list()
         gists_list = PrettyGistList(list(gists.iterator()))
-        publish_display_data(build_display_data(gists_list))
         return gists_list
 
     def show_or_update(self, gist_id=None, cell=None, display=True,
@@ -113,15 +113,14 @@ class GistMagics(Magics):
             else:
                 return self.list()
 
-    def show(self, gist_id, display=True, evaluate=True, **kwargs):
+    def show(self, gist_id, display=True, evaluate=False, **kwargs):
         gist = self.gh.gists.get(gist_id)
         pretty_gist = PrettyGist(gist)
-        if display:
-            publish_display_data(build_display_data(pretty_gist))
+        # if display:
+        #     publish_display_data(build_display_data(pretty_gist))
         if evaluate:
             get_ipython().run_cell(pretty_gist.content)
-        if not display:
-            return pretty_gist
+        return pretty_gist
 
     def create(self, cell, filename="snippet.py"):
         assert cell is not None
