@@ -88,8 +88,8 @@ class GistMagics(Magics):
                     if len(gist_id) > 0:
                         self.show(gist_id, display=False, evaluate=True)
                 except Exception as e:
-                    print "Unable to load snippet with id: %s" % gist_id
-                    print str(e)
+                    print("Unable to load snippet with id: %s" % gist_id)
+                    print(str(e))
 
     def token(self, github_token, **kwargs):
         self._token = github_token
@@ -116,8 +116,6 @@ class GistMagics(Magics):
     def show(self, gist_id, display=True, evaluate=False, **kwargs):
         gist = self.gh.gists.get(gist_id)
         pretty_gist = PrettyGist(gist)
-        # if display:
-        #     publish_display_data(build_display_data(pretty_gist))
         if evaluate:
             get_ipython().run_cell(pretty_gist.content)
         return pretty_gist
@@ -134,7 +132,7 @@ class GistMagics(Magics):
         try:
             self.gh.gists.delete(gist_id)
             print("Deleted gist %s" % gist_id)
-            # TODO: also delete the gist id line from the preset if we're on one
+            self.remove_from_preset(gist_id)
         except Exception, e:
             print("Could not delete gist %s" % line)
 
@@ -148,5 +146,13 @@ class GistMagics(Magics):
         if self.preset_id is not None:
             preset_gist = self.gh.gists.get(self.preset_id)
             preset_content = preset_gist.files["preset.txt"].content + "\n{}".format(gist_id)
-            print preset_content
             self.update(preset_gist.id, preset_content, filename="preset.txt")
+
+    def remove_from_preset(self, gist_id):
+        if self.preset_id is not None:
+            preset_gist = self.gh.gists.get(self.preset_id)
+            preset_content = preset_gist.files["preset.txt"].content + "\n{}".format(gist_id)
+            preset_lines = [line for line in preset_content.splitlines() if not line.startswith(gist_id)]
+            new_preset_content = "\n".join(preset_lines)
+            if new_preset_content != preset_content:
+                self.update(preset_gist.id, new_preset_content, filename="preset.txt")
