@@ -133,7 +133,7 @@ class GistMagics(Magics):
             self.gh.gists.delete(gist_id)
             print("Deleted gist %s" % gist_id)
             self.remove_from_preset(gist_id)
-        except Exception, e:
+        except Exception as e:
             print("Could not delete gist %s" % line)
 
     def update(self, gist_id, cell, filename="snippet.py"):
