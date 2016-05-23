@@ -73,10 +73,6 @@ class PrettyGist(object):
 }
 </style>
 """)
-        # TODO: render README.md to html and insert it here (if it is present)
-        if "README.md" in self.gist.files:
-            readme = _md.convert(self.gist.files["README.md"].content)
-            output.append(readme)
         return "\n".join(output)
 
     # def _repr_javascript_(self):
