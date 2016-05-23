@@ -136,7 +136,7 @@ class GistMagics(Magics):
     def create(self, cell, filename="snippet.py"):
         assert cell is not None
         config = dict(description='', public=False,
-                      files={filename: {'content': cell}})
+                      files={filename: {'content': cell}, "README.md": {"content": ""}})
         gist = self.gh.gists.create(config)
         self.add_to_preset(gist.id)
         print("gist id: %s" % gist.id)
@@ -147,7 +147,7 @@ class GistMagics(Magics):
             print("Deleted gist %s" % gist_id)
             self.remove_from_preset(gist_id)
         except Exception as e:
-            print("Could not delete gist %s" % line)
+            print("Could not delete gist %s" % gist_id)
 
     def update(self, gist_id, cell, filename="snippet.py"):
         assert cell is not None
