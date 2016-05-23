@@ -49,12 +49,18 @@ class GistMagics(Magics):
         preset_parser = subparsers.add_parser("preset", help="Create or register a preset gist as active")
         preset_parser.add_argument("preset_gist_id", help="ID of gist preset to select", default=None, nargs="?")
         preset_parser.set_defaults(fn=self.preset)
+        insert_parser = subparsers.add_parser("insert", help="Insert snippet code into this cell")
+        insert_parser.add_argument("gist_id", help="ID of gist to insert")
+        insert_parser.add_argument("-f", "--filename", help="gist file to insert", default="snippet.py")
+        insert_parser.add_argument("-a", "--append", help="Insert a new cell rather than replacing the content of the current one",
+                                   action="store_false", dest="replace")
+        insert_parser.set_defaults(fn=self.insert)
 
         show_parser = subparsers.add_parser("show", help="Show (or update) a gist")
         show_parser.add_argument("gist_id", help="ID of gist to load/update", nargs="?")
         show_parser.add_argument("--no-display", action="store_false", dest="display")
         show_parser.add_argument("-e", "--evaluate", action="store_true")
-        show_parser.add_argument("-f", "--file", help="Name of the gist file to create / update")
+        show_parser.add_argument("-f", "--filename", help="Name of the gist file to create / update")
         show_parser.set_defaults(fn=self.show_or_update)
 
         return parser
@@ -63,7 +69,7 @@ class GistMagics(Magics):
     def gist(self, line, cell=None):
         try:
             input_args = shlex.split(line)
-            if len(input_args) == 0 or input_args[0] not in ["token", "list", "delete", "preset"]:
+            if len(input_args) == 0 or input_args[0] not in ["token", "list", "delete", "preset", "insert"]:
                 input_args.insert(0, "show")
             args, extra = self._parser.parse_known_args(input_args)
             # print(args)
@@ -120,6 +126,13 @@ class GistMagics(Magics):
             get_ipython().run_cell(pretty_gist.content)
         return pretty_gist
 
+    def insert(self, gist_id, filename="snippet.py", replace=True, **kwargs):
+        gist = self.gh.gists.get(gist_id)
+        if filename in gist.files:
+            get_ipython().set_next_input(gist.files[filename].content, replace=replace)
+        else:
+            print("{} file not found in gist with id {}".format(filename, gist_id))
+
     def create(self, cell, filename="snippet.py"):
         assert cell is not None
         config = dict(description='', public=False,
@@ -138,9 +151,13 @@ class GistMagics(Magics):
 
     def update(self, gist_id, cell, filename="snippet.py"):
         assert cell is not None
-        config = dict(description='', public=False,
-                          files={filename: {'content': cell}})
-        gist = self.gh.gists.update(gist_id, config)
+        gist = self.gh.gists.get(gist_id)
+        config = {
+            "description": gist.description,
+            "public": gist.public,
+            "files": { filename: {"content": cell} }
+        }
+        self.gh.gists.update(gist_id, config)
 
     def add_to_preset(self, gist_id):
         if self.preset_id is not None:
