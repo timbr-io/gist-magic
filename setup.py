@@ -15,6 +15,8 @@ setup(name='gist-magic',
       #   },
       install_requires=[
           "ipython",
-          "pygithub3"
+          "pygithub3",
+          "markdown",
+          "py-gfm"
         ]
       )
