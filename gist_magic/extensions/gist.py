@@ -28,8 +28,8 @@ class GistMagics(Magics):
         if os.environ.get("GITHUB_ACCESS_TOKEN") is not None:
             self._token = os.environ.get("GITHUB_ACCESS_TOKEN")
             self.gh = Github(token=self._token)
-            self.preset_id = None
 
+        self.preset_id = None
         self._parser = self.generate_parser()
 
 
@@ -136,10 +136,11 @@ class GistMagics(Magics):
     def create(self, cell, filename="snippet.py"):
         assert cell is not None
         config = dict(description='', public=False,
-                      files={filename: {'content': cell}, "README.md": {"content": ""}})
+                      files={filename: {'content': cell}})
         gist = self.gh.gists.create(config)
         self.add_to_preset(gist.id)
         print("gist id: %s" % gist.id)
+        return gist.id
 
     def delete(self, gist_id, **kwargs):
         try:
