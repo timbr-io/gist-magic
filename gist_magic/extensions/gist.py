@@ -84,7 +84,7 @@ class GistMagics(Magics):
                 self.create("%%gist preset\n# gist ids\n", filename="preset.txt") # -> prints the id
             else:
                 self.preset_id = preset_gist_id
-                pretty_gist = self.show(preset_gist_id)
+                pretty_gist = self.show(preset_gist_id, evaluate=True)
                 return pretty_gist
         else:
             # execute as a cell magic
