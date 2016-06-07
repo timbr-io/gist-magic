@@ -42,6 +42,7 @@ class GistMagics(Magics):
         token_parser.add_argument("github_token", help="Github access token")
         token_parser.set_defaults(fn=self.token)
         list_parser = subparsers.add_parser("list", help="List current user's gists (or recent public gists if token is not set)")
+        list_parser.add_argument("-l", "--limit", help="number of gist to list", default=-1)
         list_parser.set_defaults(fn=self.list)
         delete_parser = subparsers.add_parser("delete", help="Delete gist specified by id")
         delete_parser.add_argument("gist_id", help="ID of gist to delete")
@@ -51,7 +52,7 @@ class GistMagics(Magics):
         preset_parser.set_defaults(fn=self.preset)
         insert_parser = subparsers.add_parser("insert", help="Insert snippet code into this cell")
         insert_parser.add_argument("gist_id", help="ID of gist to insert")
-        insert_parser.add_argument("-f", "--filename", help="gist file to insert", default="snippet.py")
+        insert_parser.add_argument("-f", "--filename", help="name of the gist file to insert", default="snippet.py")
         insert_parser.add_argument("-a", "--append", help="Insert a new cell rather than replacing the content of the current one",
                                    action="store_false", dest="replace")
         insert_parser.set_defaults(fn=self.insert)
@@ -61,6 +62,7 @@ class GistMagics(Magics):
         show_parser.add_argument("--no-display", action="store_false", dest="display")
         show_parser.add_argument("-e", "--evaluate", action="store_true")
         show_parser.add_argument("-f", "--filename", help="Name of the gist file to create / update")
+        show_parser.add_argument("-d", "--description", help="a description for the gist", default="")
         show_parser.set_defaults(fn=self.show_or_update)
 
         return parser
@@ -101,16 +103,16 @@ class GistMagics(Magics):
         self._token = github_token
         self.gh = Github(token=self._token)
 
-    def list(self, **kwargs):
+    def list(self, limit=-1, **kwargs):
         gists = self.gh.gists.list()
-        gists_list = PrettyGistList(list(gists.iterator()))
+        gists_list = PrettyGistList(list(gists.iterator())[:int(limit)])
         return gists_list
 
     def show_or_update(self, gist_id=None, cell=None, display=True,
-                       evaluate=True, filename="snippet.py", **kwargs):
+                       evaluate=True, filename="snippet.py", description='', **kwargs):
         if cell is not None:
             if gist_id is None:
-                return self.create(cell, filename=filename)
+                return self.create(cell, filename=filename, description=description)
             else:
                 return self.update(gist_id, cell, filename=filename)
         else:
@@ -133,10 +135,13 @@ class GistMagics(Magics):
         else:
             print("{} file not found in gist with id {}".format(filename, gist_id))
 
-    def create(self, cell, filename="snippet.py"):
+    def create(self, cell, filename="snippet.py", description=''):
         assert cell is not None
-        config = dict(description='', public=False,
-                      files={filename: {'content': cell}})
+        if filename is None:
+          filename = 'snippet.py'
+        config = dict(description=description, public=False, files={})
+        config['files'][filename] = {'content': cell}
+
         gist = self.gh.gists.create(config)
         self.add_to_preset(gist.id)
         print("gist id: %s" % gist.id)
