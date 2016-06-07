@@ -121,7 +121,7 @@ class GistMagics(Magics):
 
     def show(self, gist_id, display=True, evaluate=False, **kwargs):
         gist = self.gh.gists.get(gist_id)
-        pretty_gist = PrettyGist(gist)
+        pretty_gist = PrettyGist(gist, display=display)
         if evaluate:
             get_ipython().run_cell(pretty_gist.content)
         return pretty_gist

@@ -17,9 +17,10 @@ def build_display_data(obj):
 
 
 class PrettyGist(object):
-    def __init__(self, g, compact=False):
+    def __init__(self, g, compact=False, display=True):
         self.gist = g
         self.compact = compact
+        self.display = display
 
     @property
     def content(self):
@@ -61,19 +62,22 @@ class PrettyGist(object):
         return output
 
     def _repr_html_(self):
-        url = "https://gist.github.com/%s/%s.js" % (self.gist.owner["login"], self.gist.id)
-        resp = urlopen(url)
-        jsdata = resp.read()
-        matches = [re.findall(r"document\.write\([\'\"](.+)[\'\"]\)", line, re.DOTALL) for line in jsdata.splitlines()]
-        output = [re.sub(r"<\\/(\w+)>", r"</\1>", m.decode("string_escape")) for m in chain(*matches)]
-        output.append("""
-<style>
-.rendered_html th, .rendered_html td, .rendered_html tr {
-  border: 0px;
-}
-</style>
-""")
-        return "\n".join(output)
+        if self.display:
+            url = "https://gist.github.com/%s/%s.js" % (self.gist.owner["login"], self.gist.id)
+            resp = urlopen(url)
+            jsdata = resp.read()
+            matches = [re.findall(r"document\.write\([\'\"](.+)[\'\"]\)", line, re.DOTALL) for line in jsdata.splitlines()]
+            output = [re.sub(r"<\\/(\w+)>", r"</\1>", m.decode("string_escape")) for m in chain(*matches)]
+            output.append("""
+    <style>
+    .rendered_html th, .rendered_html td, .rendered_html tr {
+      border: 0px;
+    }
+    </style>
+    """)
+            return "\n".join(output)
+        else:
+            return ""
 
     # def _repr_javascript_(self):
     #     return 'console.log("<PrettyGist/>")'
