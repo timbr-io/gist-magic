@@ -137,8 +137,6 @@ class GistMagics(Magics):
 
     def create(self, cell, filename="snippet.py", description=''):
         assert cell is not None
-        if filename is None:
-          filename = 'snippet.py'
         config = dict(description=description, public=False, files={})
         config['files'][filename] = {'content': cell}
 
