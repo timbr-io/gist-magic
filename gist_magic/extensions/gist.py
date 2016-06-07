@@ -49,6 +49,7 @@ class GistMagics(Magics):
         delete_parser.set_defaults(fn=self.delete)
         preset_parser = subparsers.add_parser("preset", help="Create or register a preset gist as active")
         preset_parser.add_argument("preset_gist_id", help="ID of gist preset to select", default=None, nargs="?")
+        preset_parser.add_argument("--no-display", action="store_false", dest="display")
         preset_parser.set_defaults(fn=self.preset)
         insert_parser = subparsers.add_parser("insert", help="Insert snippet code into this cell")
         insert_parser.add_argument("gist_id", help="ID of gist to insert")
@@ -74,12 +75,11 @@ class GistMagics(Magics):
             if len(input_args) == 0 or input_args[0] not in ["token", "list", "delete", "preset", "insert"]:
                 input_args.insert(0, "show")
             args, extra = self._parser.parse_known_args(input_args)
-            # print(args)
             return args.fn(cell=cell, **vars(args))
         except SystemExit, se:
             pass
 
-    def preset(self, preset_gist_id=None, cell=None, **kwargs):
+    def preset(self, preset_gist_id=None, cell=None, display=True, **kwargs):
         if cell is None:
             if preset_gist_id is None:
                 # create an empty gist and output the id
@@ -87,7 +87,10 @@ class GistMagics(Magics):
             else:
                 self.preset_id = preset_gist_id
                 pretty_gist = self.show(preset_gist_id, evaluate=True)
-                return pretty_gist
+                if display == True:
+                  return pretty_gist
+                else:
+                  return None
         else:
             # execute as a cell magic
             for line in cell.splitlines():
@@ -98,6 +101,7 @@ class GistMagics(Magics):
                 except Exception as e:
                     print("Unable to load snippet with id: %s" % gist_id)
                     print(str(e))
+
 
     def token(self, github_token, **kwargs):
         self._token = github_token
