@@ -158,11 +158,13 @@ class GistMagics(Magics):
     def update(self, gist_id, cell, filename="snippet.py"):
         assert cell is not None
         gist = self.gh.gists.get(gist_id)
-        config = {
+        config = { 
             "description": gist.description,
             "public": gist.public,
-            "files": { filename: {"content": cell} }
+            "files": {}
         }
+        config["files"][filename] = {"content": cell}
+        
         self.gh.gists.update(gist_id, config)
 
     def add_to_preset(self, gist_id):
