@@ -1,8 +1,8 @@
 # gist-magic
-An Jupyter magic interface for working sharing code as Gists
+A Jupyter Notebook interface for Gists
 ---
 
-gist-magic adds "magic" functions to a Jupyter Notebook that allow users to save code cells as Gists, group cells together, and quickly execute python from saved gists. 
+Gist-magic is a Python module that adds "magic" functions to a Jupyter Notebooks. It allows users to save code cells as Gists, group cells together, and execute code from saved gists. 
 
 ## Installation 
 
