@@ -63,7 +63,12 @@ class PrettyGist(object):
 
     def _repr_html_(self):
         if self.display:
-            url = "https://gist.github.com/%s/%s.js" % (self.gist.owner["login"], self.gist.id)
+            try:
+              owner = self.gist.owner["login"]
+            except AttributeError:
+              owner = 'anonymous'
+
+            url = "https://gist.github.com/%s/%s.js" % (owner, self.gist.id)
             resp = urlopen(url)
             jsdata = resp.read()
             matches = [re.findall(r"document\.write\([\'\"](.+)[\'\"]\)", line, re.DOTALL) for line in jsdata.splitlines()]

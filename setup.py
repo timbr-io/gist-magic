@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='gist-magic',
-      version='0.1',
+      version='0.2',
       description='IPython magics to work with gists',
       url='https://github.com/pramukta/gist-magic',
       author='Pramukta Kumar',
