@@ -25,9 +25,8 @@ def publish_to_display(obj):
 class GistMagics(Magics):
     def __init__(self, shell):
         super(GistMagics, self).__init__(shell)
-        if os.environ.get("GITHUB_ACCESS_TOKEN") is not None:
-            self._token = os.environ.get("GITHUB_ACCESS_TOKEN")
-            self.gh = Github(token=self._token)
+        self._token = os.environ.get("GITHUB_ACCESS_TOKEN")
+        self.gh = Github(token=self._token)
 
         self.preset_id = None
         self._parser = self.generate_parser()
@@ -108,9 +107,14 @@ class GistMagics(Magics):
         self.gh = Github(token=self._token)
 
     def list(self, limit=-1, **kwargs):
-        gists = self.gh.gists.list()
-        gists_list = PrettyGistList(list(gists.iterator())[:int(limit)])
-        return gists_list
+        try:
+          assert self._token is not None
+          gists = self.gh.gists.list()
+          gists_list = PrettyGistList(list(gists.iterator())[:int(limit)])
+          return gists_list
+        except AssertionError:
+          print("No token defined. Unable to list gists")
+        
 
     def show_or_update(self, gist_id=None, cell=None, display=True,
                        evaluate=True, filename="snippet.py", description='', **kwargs):
@@ -140,14 +144,18 @@ class GistMagics(Magics):
             print("{} file not found in gist with id {}".format(filename, gist_id))
 
     def create(self, cell, filename="snippet.py", description=''):
-        assert cell is not None
-        config = dict(description=description, public=False, files={})
-        config['files'][filename] = {'content': cell}
+        try:
+            assert cell is not None
+            assert self._token is not None
+            config = dict(description=description, public=False, files={})
+            config['files'][filename] = {'content': cell}
 
-        gist = self.gh.gists.create(config)
-        self.add_to_preset(gist.id)
-        print("gist id: %s" % gist.id)
-        return gist.id
+            gist = self.gh.gists.create(config)
+            self.add_to_preset(gist.id)
+            print("gist id: %s" % gist.id)
+            return gist.id
+        except AssertionError:
+          print("No token defined. Unable to create gists.") 
 
     def delete(self, gist_id, **kwargs):
         try:
@@ -158,16 +166,21 @@ class GistMagics(Magics):
             print("Could not delete gist %s" % gist_id)
 
     def update(self, gist_id, cell, filename="snippet.py"):
-        assert cell is not None
-        gist = self.gh.gists.get(gist_id)
-        config = { 
-            "description": gist.description,
-            "public": gist.public,
-            "files": {}
-        }
-        config["files"][filename] = {"content": cell}
-        
-        self.gh.gists.update(gist_id, config)
+        try:
+            assert cell is not None
+            assert self._token is not None
+          
+            gist = self.gh.gists.get(gist_id)
+            config = { 
+                "description": gist.description,
+                "public": gist.public,
+                "files": {}
+            }
+            config["files"][filename] = {"content": cell}
+          
+            self.gh.gists.update(gist_id, config)
+        except AssertionError:
+          print("No token defined. Unable to update gists or add them to presets")
 
     def add_to_preset(self, gist_id):
         if self.preset_id is not None:
