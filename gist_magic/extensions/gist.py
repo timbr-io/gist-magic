@@ -148,7 +148,7 @@ class GistMagics(Magics):
             assert cell is not None
             assert self._token is not None
             config = dict(description=description, public=False, files={})
-            config['files'][filename] = {'content': cell}
+            config['files'][filename or 'snippet.py'] = {'content': cell}
 
             gist = self.gh.gists.create(config)
             self.add_to_preset(gist.id)
@@ -176,7 +176,7 @@ class GistMagics(Magics):
                 "public": gist.public,
                 "files": {}
             }
-            config["files"][filename] = {"content": cell}
+            config["files"][filename or 'snippet.py'] = {"content": cell}
           
             self.gh.gists.update(gist_id, config)
         except AssertionError:
